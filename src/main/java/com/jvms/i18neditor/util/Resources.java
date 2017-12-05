@@ -2,6 +2,7 @@ package com.jvms.i18neditor.util;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -78,6 +79,35 @@ public final class Resources {
 				} else {
 //					locale = LocaleUtils.toLocale(fileName);
 					path = Paths.get(rootDir.toString(), baseName + extension);
+				}
+				result.add(new Resource(resourceType, path, locale));
+			}
+		};
+		return result;
+	}
+
+	public static List<Resource> get(Path rootDir,Optional<ResourceType> type) throws IOException {
+		List<Resource> result = Lists.newLinkedList();
+		List<Path> files = Files.walk(rootDir, 1).collect(Collectors.toList());
+		for (Path path : files) {
+			ResourceType resourceType = null;
+			for (ResourceType t : ResourceType.values()) {
+				if (isResourceType(type, t) && isResource(rootDir, path, t)) {
+					resourceType = t;
+					break;
+				}
+			}
+			if (resourceType != null) {
+				String fileName = path.getFileName().toString();
+				String extension = resourceType.getExtension();
+				Locale locale = null;
+				if (resourceType.isEmbedLocale()) {
+					String pattern = "_(" + LOCALE_REGEX + ")" + extension + "$";
+					Matcher match = Pattern.compile(pattern).matcher(fileName);
+					if (match.find()) {
+						locale = LocaleUtils.toLocale(match.group(1));
+					}
+					path = Paths.get(rootDir.toString(),  (locale == null ? "" : "_" + locale.toString()) + extension);
 				}
 				result.add(new Resource(resourceType, path, locale));
 			}
@@ -168,7 +198,18 @@ public final class Resources {
 					Files.isRegularFile(Paths.get(path.toString(), baseName + extension));
 		}
 	}
-	
+
+	// 方法重载，导入项目的时候使用
+	private static boolean isResource(Path root, Path path, ResourceType type) throws IOException {
+		String extension = type.getExtension();
+		if (type.isEmbedLocale()) {
+			return Files.isRegularFile(path) &&
+					Pattern.matches("^"  + "(_" + LOCALE_REGEX + ")?" + extension + "$", path.getFileName().toString());
+		} else {
+			return Files.isDirectory(root) && Files.isRegularFile(path) && path.toString().endsWith(type.getExtension());
+		}
+	}
+
 	private static boolean isResourceType(Optional<ResourceType> a, ResourceType b) {
 		return !a.isPresent() || a.get() == b;
 	}

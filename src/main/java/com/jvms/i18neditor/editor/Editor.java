@@ -120,7 +120,8 @@ public class Editor extends JFrame {
 				return;
 			}
 			
-			List<Resource> resourceList = Resources.get(dir, settings.getResourceName(), Optional.empty());
+//			List<Resource> resourceList = Resources.get(dir, settings.getResourceName(), Optional.empty());
+			List<Resource> resourceList = Resources.get(dir, Optional.empty());
 			if (!resourceList.isEmpty()) {
 				boolean importProject = Dialogs.showConfirmDialog(this, 
 						MessageBundle.get("dialogs.project.new.conflict.title"),
@@ -169,7 +170,9 @@ public class Editor extends JFrame {
 			restoreProjectState(project);
 			
 			Optional<ResourceType> type = Optional.ofNullable(project.getResourceType());
-			List<Resource> resourceList = Resources.get(dir, project.getResourceName(), type);
+//			List<Resource> resourceList = Resources.get(dir, project.getResourceName(), type);
+			List<Resource> resourceList = Resources.get(dir,  type);
+
 			Map<String,String> keys = Maps.newTreeMap();
 			
 			if (resourceList.isEmpty()) {
@@ -596,7 +599,11 @@ public class Editor extends JFrame {
 		resourcesPanel.removeAll();
 		resourceFields = resourceFields.stream().sorted().collect(Collectors.toList());
 		resourceFields.forEach(field -> {
-			Locale locale = field.getResource().getLocale();
+			// 当导入项目的时候，自动使用导入的文件的文件的名字 作为语言的翻译
+			String name = field.getResource().getPath().getFileName().toString();
+			String fileName=name.substring(0,name.lastIndexOf("."));
+			Locale locale = new Locale(fileName);
+
 			String label = locale != null ? locale.getDisplayName(): MessageBundle.get("resources.locale.default");
 			field.setEnabled(selectedNode != null && selectedNode.isEditable());
 			field.setRows(settings.getDefaultInputHeight());
